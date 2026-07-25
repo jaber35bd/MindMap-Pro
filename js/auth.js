@@ -17,6 +17,42 @@ const Auth = (() => {
   let onStatusChange = () => {};
   let signInResolvers = [];
 
+  const SS_TOKEN_KEY = 'mmpro_ss_token';
+  const SS_EXPIRES_KEY = 'mmpro_ss_expires';
+  const SS_USER_KEY = 'mmpro_ss_user';
+
+  function persistSession() {
+    try {
+      sessionStorage.setItem(SS_TOKEN_KEY, accessToken || '');
+      sessionStorage.setItem(SS_EXPIRES_KEY, String(tokenExpiresAt || 0));
+      sessionStorage.setItem(SS_USER_KEY, JSON.stringify(currentUser || null));
+    } catch (e) { /* sessionStorage unavailable — session just won't survive navigation */ }
+  }
+  function clearSession() {
+    try {
+      sessionStorage.removeItem(SS_TOKEN_KEY);
+      sessionStorage.removeItem(SS_EXPIRES_KEY);
+      sessionStorage.removeItem(SS_USER_KEY);
+    } catch (e) {}
+  }
+  // Restores a still-valid token saved by another page in this same tab
+  // session (e.g. index.html -> editor.html navigation), so the user isn't
+  // forced through sign-in again on every page load.
+  async function restoreFromSession() {
+    try {
+      const t = sessionStorage.getItem(SS_TOKEN_KEY);
+      const exp = Number(sessionStorage.getItem(SS_EXPIRES_KEY) || 0);
+      const u = sessionStorage.getItem(SS_USER_KEY);
+      if (t && exp > Date.now() + 60000) {
+        accessToken = t;
+        tokenExpiresAt = exp;
+        currentUser = u ? JSON.parse(u) : null;
+        if (!currentUser) await fetchProfile();
+        onStatusChange('signed-in', currentUser);
+      }
+    } catch (e) { /* ignore malformed session data */ }
+  }
+
   function init(statusCallback) {
     onStatusChange = statusCallback || (() => {});
     return new Promise((resolve, reject) => {
@@ -38,6 +74,7 @@ const Auth = (() => {
             accessToken = resp.access_token;
             tokenExpiresAt = Date.now() + (Number(resp.expires_in || 3500) * 1000);
             await fetchProfile();
+            persistSession();
             onStatusChange('signed-in', currentUser);
             signInResolvers.forEach(r => r.resolve(accessToken));
             signInResolvers = [];
@@ -60,6 +97,8 @@ const Auth = (() => {
         if (tryInit() || tries > 100) clearInterval(iv);
         if (tries > 100) reject(new Error('Google Identity Services load hoy ni. Internet check korun.'));
       }, 100);
+    }).then(async () => {
+      await restoreFromSession();
     });
   }
 
@@ -91,6 +130,7 @@ const Auth = (() => {
     accessToken = null;
     tokenExpiresAt = 0;
     currentUser = null;
+    clearSession();
     onStatusChange('signed-out', null);
   }
 

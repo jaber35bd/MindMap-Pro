@@ -220,7 +220,11 @@ async function boot() {
       else if (status === 'signed-out') showSignedOutUI();
       else if (status === 'error') toast('Google auth error — GitHub Pages domain ta Google Cloud Console e "Authorized JavaScript origins" e add kora ache kina check korun.', 'error');
     });
-    showSignedOutUI();
+    // Auth.init() already tries to restore a still-valid session (saved by
+    // index.html/editor.html earlier in this tab) and fires 'signed-in'
+    // above if it succeeds. Only fall back to the sign-in splash if that
+    // didn't happen.
+    if (!Auth.isSignedIn()) showSignedOutUI();
   } catch (e) {
     console.error(e);
     toast(e.message, 'error');
