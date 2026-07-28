@@ -139,6 +139,8 @@ function mmComputeLayout(model, opts) {
       return total;
     }
     countLeaves(model.rootId);
+    const CHAIN_STEP = 108;   // radius step for a straight single-child chain (compact, linear)
+    const BRANCH_STEP = 185;  // radius step when a node actually splits into 2+ children (roomy fan-out)
     function assign(id, angleStart, angleSpan, radius) {
       const node = model.nodes.get(id);
       if (!node) return;
@@ -150,11 +152,13 @@ function mmComputeLayout(model, opts) {
       const kids = visibleChildren(node);
       if (!kids.length) return;
       const total = leafCounts.get(id) || 1;
+      const step = kids.length > 1 ? BRANCH_STEP : CHAIN_STEP;
+      const childRadius = radius + step;
       let cur = angleStart;
       kids.forEach(cid => {
         const leaves = leafCounts.get(cid) || 1;
         const span = (leaves / total) * angleSpan;
-        assign(cid, cur, span, radius + 170);
+        assign(cid, cur, span, childRadius);
         cur += span;
       });
     }
