@@ -187,6 +187,68 @@ function mmComputeLayout(model, opts) {
     }
     place(model.rootId, 0, 0);
   }
+  else if (layout === 'tree-balanced') {
+    // EdrawMind/XMind-style: root center, main branches auto-split left/right
+    // by leaf-weight so both sides stay visually balanced (not just left half
+    // / right half by count — a branch with many sub-nodes counts for more).
+    positions.set(model.rootId, { x: 0, y: 0 });
+    const mainBranches = visibleChildren(root);
+
+    const leafCounts = new Map();
+    function countLeaves(id) {
+      const node = model.nodes.get(id);
+      const kids = visibleChildren(node);
+      if (!node || kids.length === 0) return 1;
+      let total = 0; kids.forEach(cid => total += countLeaves(cid));
+      leafCounts.set(id, total);
+      return total;
+    }
+    mainBranches.forEach(cid => countLeaves(cid));
+
+    // Greedy bin-balance: heaviest branch first, always drop it on whichever
+    // side is currently lighter. Keeps left/right node-count close to even.
+    const origIndex = new Map(mainBranches.map((id, i) => [id, i]));
+    const ordered = [...mainBranches].sort((a, b) => (leafCounts.get(b) || 1) - (leafCounts.get(a) || 1));
+    const left = [], right = [];
+    let leftWeight = 0, rightWeight = 0;
+    ordered.forEach(cid => {
+      const w = leafCounts.get(cid) || 1;
+      if (leftWeight <= rightWeight) { left.push(cid); leftWeight += w; }
+      else { right.push(cid); rightWeight += w; }
+    });
+    // Restore each side's original top-to-bottom branch order (reads nicer
+    // than weight-sorted order).
+    left.sort((a, b) => origIndex.get(a) - origIndex.get(b));
+    right.sort((a, b) => origIndex.get(a) - origIndex.get(b));
+
+    function shiftSubtree(id, dy) {
+      const p = positions.get(id);
+      if (p) positions.set(id, { x: p.x, y: p.y + dy });
+      visibleChildren(model.nodes.get(id)).forEach(cid => shiftSubtree(cid, dy));
+    }
+    function placeSide(ids, dir) { // dir: +1 = right of root, -1 = left of root
+      let offset = 0;
+      function place(id, depth, off) {
+        const node = model.nodes.get(id);
+        const kids = visibleChildren(node);
+        if (!kids.length) {
+          positions.set(id, { x: dir * depth * 210, y: off * 90 });
+          return 1;
+        }
+        let total = 0;
+        kids.forEach(cid => { total += place(cid, depth + 1, off + total); });
+        const mid = off + total / 2 - 0.5;
+        positions.set(id, { x: dir * depth * 210, y: mid * 90 });
+        return Math.max(1, total);
+      }
+      ids.forEach(cid => { offset += place(cid, 1, offset); });
+      if (ids.length) shiftSubtreeGroup(ids, -((offset - 1) / 2) * 90);
+      return offset;
+    }
+    function shiftSubtreeGroup(ids, dy) { ids.forEach(cid => shiftSubtree(cid, dy)); }
+    placeSide(left, -1);
+    placeSide(right, 1);
+  }
   else if (layout === 'fishbone') {
     // Root far right on the "spine"; main branches alternate above/below,
     // sub-branches cascade further left.
