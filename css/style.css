@@ -308,4 +308,12 @@ button{ font-family: inherit; }
   .editor-panel{ position:absolute; right:0; top:0; bottom:0; z-index: 50; box-shadow: -8px 0 24px rgba(0,0,0,.15); }
   .dash-sidebar{ position:absolute; left:0; top:0; bottom:0; z-index: 50; transform: translateX(-100%); transition: transform .2s; }
   .dash-sidebar.open{ transform:none; }
+
+  /* Toolbar: on narrow screens, wrapping to multiple rows makes buttons hard to
+     find and eats canvas space. Keep it a single row and let it scroll
+     horizontally instead — swipe left/right to reach every tool. */
+  .toolbar{ flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+  .toolbar::-webkit-scrollbar{ display:none; }
+  .toolbar-group{ flex-shrink:0; }
+  .diagram-name-input{ min-width:90px; }
 }
