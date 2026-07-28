@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MindMap Pro — Editor</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧠</text></svg>">
+<link rel="stylesheet" href="css/style.css">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+<div id="editorShell" class="editor-shell">
+
+  <div class="toolbar" id="toolbarRoot">
+    <div class="toolbar-group">
+      <button class="btn btn-icon btn-ghost" id="backBtn" title="Back to dashboard">←</button>
+      <input class="diagram-name-input" id="diagramNameInput" value="Untitled Mind Map">
+    </div>
+
+    <div class="toolbar-group">
+      <button class="btn btn-icon btn-ghost" id="undoBtn" title="Undo (Ctrl+Z)">↺</button>
+      <button class="btn btn-icon btn-ghost" id="redoBtn" title="Redo (Ctrl+Y)">↻</button>
+    </div>
+
+    <div class="toolbar-group">
+      <select class="input" id="layoutSelect" title="Layout" style="padding:6px 8px;">
+        <option value="radial">🌐 Radial</option>
+        <option value="tree-right">➡️ Tree (Left→Right)</option>
+        <option value="tree-down">⬇️ Tree (Top→Down)</option>
+        <option value="fishbone">🐟 Fishbone</option>
+      </select>
+      <button class="btn btn-icon btn-ghost" id="autoArrangeBtn" title="Auto arrange (reset dragged positions to a tidy layout)">🪄</button>
+    </div>
+
+    <div class="toolbar-group">
+      <button class="btn btn-icon btn-ghost" id="searchToggleBtn" title="Search (Ctrl+F)">🔍</button>
+      <button class="btn btn-icon btn-ghost" id="presentBtn" title="Presentation mode">▶️</button>
+      <button class="btn btn-icon btn-ghost" id="themeToggleBtn" title="Toggle theme">🌙</button>
+    </div>
+
+    <div class="toolbar-group">
+      <button class="btn btn-sm btn-ghost" id="shareBtn" title="Get a view-only link">🔗 Share</button>
+      <button class="btn btn-sm btn-ghost" id="exportMenuBtn">⬇️ Export</button>
+      <input type="file" id="importInput" accept="application/json" style="display:none;">
+    </div>
+
+    <div style="flex:1;"></div>
+
+    <div class="toolbar-group" style="border:none;">
+      <div class="save-status" id="saveStatus"><span class="save-dot"></span><span id="saveStatusLabel">Ready</span></div>
+      <div id="userChip"></div>
+    </div>
+  </div>
+
+  <div class="main-area">
+    <div class="canvas-wrap" id="canvasWrap">
+      <div class="search-overlay" id="searchOverlay" style="display:none;">
+        <input id="searchInputEditor" placeholder="Search nodes...">
+        <span class="search-count" id="searchCount">0/0</span>
+        <button class="btn btn-icon btn-ghost" id="searchPrevBtn" style="width:26px;height:26px;">↑</button>
+        <button class="btn btn-icon btn-ghost" id="searchNextBtn" style="width:26px;height:26px;">↓</button>
+      </div>
+
+      <div class="minimap-hint">Tab: add child · Enter: add sibling · Shift+drag: multi-select · Scroll: zoom</div>
+
+      <svg id="canvasSvg" class="canvas-svg"></svg>
+
+      <div class="zoom-controls">
+        <button class="btn btn-icon btn-ghost" id="zoomOutBtn">－</button>
+        <span class="zoom-pct" id="zoomPct">100%</span>
+        <button class="btn btn-icon btn-ghost" id="zoomInBtn">＋</button>
+        <button class="btn btn-sm btn-ghost" id="zoomResetBtn" style="margin-left:4px;">Fit</button>
+      </div>
+    </div>
+
+    <aside class="editor-panel hidden" id="editorPanel">
+      <div class="editor-panel-inner">
+        <div class="panel-header">
+          <h3>✏️ Node Editor</h3>
+          <button class="btn btn-icon btn-ghost" id="panelClose" style="width:28px;height:28px;">✖</button>
+        </div>
+        <div id="panelMultiHint" style="display:none; font-size:.75rem; color:var(--text-muted); background:var(--surface-2); padding:6px 10px; border-radius:8px;"></div>
+
+        <div class="field">
+          <label>Text</label>
+          <textarea class="input" id="nodeText" rows="2" placeholder="Node text..."></textarea>
+        </div>
+
+        <div class="style-toggle-row">
+          <button class="toggle-btn" id="boldToggle" style="font-weight:800;">B</button>
+          <button class="toggle-btn" id="italicToggle" style="font-style:italic;">I</button>
+        </div>
+
+        <div class="field">
+          <label>Font size</label>
+          <div class="range-row">
+            <input type="range" id="nodeFontSize" min="10" max="28" step="1">
+            <span class="range-val" id="nodeFontSizeVal">14</span>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="field">
+          <label>Shape</label>
+          <div class="shape-select-row">
+            <div class="shape-opt" data-shape="rounded" title="Rounded"><svg width="26" height="18"><rect x="1" y="1" width="24" height="16" rx="6" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></div>
+            <div class="shape-opt" data-shape="rect" title="Rectangle"><svg width="26" height="18"><rect x="1" y="1" width="24" height="16" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></div>
+            <div class="shape-opt" data-shape="ellipse" title="Ellipse"><svg width="26" height="18"><ellipse cx="13" cy="9" rx="12" ry="8" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></div>
+            <div class="shape-opt" data-shape="diamond" title="Diamond"><svg width="26" height="18"><polygon points="13,1 25,9 13,17 1,9" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></div>
+            <div class="shape-opt" data-shape="cloud" title="Cloud/Pill"><svg width="26" height="18"><rect x="1" y="1" width="24" height="16" rx="8" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></div>
+          </div>
+        </div>
+
+        <div class="row-3">
+          <div class="field"><label>Fill</label><input type="color" id="nodeFillColor" class="color-swatch"></div>
+          <div class="field"><label>Border</label><input type="color" id="nodeBorderColor" class="color-swatch"></div>
+          <div class="field"><label>Text</label><input type="color" id="nodeTextColor" class="color-swatch"></div>
+        </div>
+
+        <div class="field">
+          <label>Font</label>
+          <select class="input" id="nodeFontFamily">
+            <option value="Inter">Inter (default)</option>
+            <option value="'Segoe UI'">Segoe UI</option>
+            <option value="Georgia">Georgia</option>
+            <option value="'Courier New'">Courier New</option>
+            <option value="'Trebuchet MS'">Trebuchet MS</option>
+          </select>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="field"><label>Border &amp; shape</label></div>
+        <div class="row-2">
+          <div class="field">
+            <label>Weight</label>
+            <select class="input" id="nodeBorderWidth">
+              <option value="0">None</option>
+              <option value="1">Thin</option>
+              <option value="2">Medium</option>
+              <option value="3">Thick</option>
+              <option value="5">Extra thick</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Dashes</label>
+            <select class="input" id="nodeBorderStyle">
+              <option value="solid">Solid</option>
+              <option value="dashed">Dashed</option>
+              <option value="dotted">Dotted</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field" id="cornerRadiusField">
+          <label>Corner radius</label>
+          <div class="range-row">
+            <input type="range" id="nodeCornerRadius" min="0" max="30" step="1">
+            <span class="range-val" id="nodeCornerRadiusVal">14</span>
+          </div>
+        </div>
+
+        <div class="style-toggle-row">
+          <button class="toggle-btn" id="fillToggle">Filling</button>
+          <button class="toggle-btn" id="shadowToggle">Shadow</button>
+        </div>
+
+        <div class="field">
+          <label>Icon</label>
+          <div class="icon-grid" id="iconGrid"></div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="field">
+          <label>Note (tooltip)</label>
+          <input class="input" id="nodeNote" placeholder="Extra context on hover...">
+        </div>
+
+        <div class="field">
+          <label>Image URL</label>
+          <input class="input" id="nodeImageUrl" placeholder="https://...">
+          <img id="nodeImagePreview" class="node-preview-image" style="display:none;" alt="">
+        </div>
+
+        <div class="field">
+          <label>Link URL</label>
+          <input class="input" id="nodeLinkUrl" placeholder="https://...">
+        </div>
+
+        <div class="field">
+          <label>Tag</label>
+          <input class="input" id="nodeTag" placeholder="e.g. Urgent" maxlength="12">
+        </div>
+
+        <div class="field">
+          <button class="btn btn-sm btn-subtle" id="nodeProgressToggle" style="width:100%;">Add progress bar</button>
+          <div class="range-row" id="progressRow" style="display:none;">
+            <input type="range" id="nodeProgress" min="0" max="100" step="5">
+            <span class="range-val" id="nodeProgressVal">0%</span>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="row-2">
+          <button class="btn btn-subtle" id="panelAddChild">➕ Add child</button>
+          <button class="btn btn-danger" id="panelDelete">🗑️ Delete</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<div class="toast-stack" id="toastStack"></div>
+
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/mindmap-model.js"></script>
+<script src="js/editor-state.js"></script>
+<script src="js/editor-render.js"></script>
+<script src="js/editor-panel.js"></script>
+<script src="js/editor-toolbar.js"></script>
+<script src="js/editor-main.js"></script>
+</body>
+</html>
