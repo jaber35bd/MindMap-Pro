@@ -56,6 +56,16 @@ const EditorToolbar = (() => {
     });
   }
 
+  function wireAutoArrange() {
+    const btn = document.getElementById('autoArrangeBtn');
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      EditorState.clearCustomPositions();
+      EditorRender.resetView();
+      toast('Mind map auto-arrange kora hoyeche');
+    });
+  }
+
   function wireTheme() {
     document.getElementById('themeToggleBtn').addEventListener('click', () => {
       const cur = EditorState.model.theme === 'dark' ? 'light' : 'dark';
@@ -316,7 +326,7 @@ const EditorToolbar = (() => {
   }
 
   function init() {
-    wireBack(); wireNameInput(); wireUndoRedo(); wireZoom(); wireLayout();
+    wireBack(); wireNameInput(); wireUndoRedo(); wireZoom(); wireLayout(); wireAutoArrange();
     wireTheme(); wireExportImport(); wireSearch(); wirePresentation(); wireShare(); wireKeyboard();
   }
 
