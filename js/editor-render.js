@@ -178,8 +178,18 @@ const EditorRender = (() => {
       }
 
       if (node.linkUrl) {
-        const linkIcon = el('text', { x: w / 2 - 18, y: h / 2 - 6, 'font-size': 12 });
+        const linkIcon = el('text', { x: w / 2 - 18, y: h / 2 - 6, 'font-size': 12, style: 'cursor:pointer;' });
         linkIcon.textContent = '🔗';
+        const linkTitle = el('title', {});
+        linkTitle.textContent = node.linkUrl;
+        linkIcon.appendChild(linkTitle);
+        linkIcon.addEventListener('click', (e) => {
+          e.stopPropagation();
+          let url = (node.linkUrl || '').trim();
+          if (url && !/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(url)) url = 'https://' + url;
+          window.open(url, '_blank', 'noopener,noreferrer');
+        });
+        linkIcon.addEventListener('mousedown', (e) => { e.stopPropagation(); });
         g.appendChild(linkIcon);
       }
 
