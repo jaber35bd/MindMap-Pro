@@ -322,6 +322,7 @@ const EditorToolbar = (() => {
       else if ((e.key === 'Delete' || e.key === 'Backspace') && id && id !== EditorState.model.rootId) { e.preventDefault(); EditorState.deleteSelected(); }
       else if (e.key === 'Escape') { EditorState.clearSelection(); closeAnyMenu(); }
       else if ((e.ctrlKey || e.metaKey) && e.key === 'f') { e.preventDefault(); document.getElementById('searchToggleBtn').click(); }
+      else if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'a' || e.key === 'A')) { e.preventDefault(); document.getElementById('autoArrangeBtn').click(); }
     });
   }
 
