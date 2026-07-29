@@ -88,6 +88,7 @@ const EditorRender = (() => {
     viewport.appendChild(defs);
     const positions = mmComputeLayout(model);
     positionsCache = positions;
+    const readOnlyMode = !!(typeof EditorState !== 'undefined' && EditorState.readOnly);
 
     // connectors
     const linkLayer = el('g', { class: 'link-layer' });
@@ -113,7 +114,7 @@ const EditorRender = (() => {
       const parent = node.parentId ? model.nodes.get(node.parentId) : null;
       if (parent && parent.collapsed) return;
 
-      const g = el('g', { transform: `translate(${pos.x},${pos.y})`, 'data-node-id': id, style: 'cursor:pointer' });
+      const g = el('g', { transform: `translate(${pos.x},${pos.y})`, 'data-node-id': id, style: readOnlyMode ? 'cursor:default;' : 'cursor:pointer' });
       const isSelected = selectedIds.has(id);
       const isHighlighted = searchHighlightIds && searchHighlightIds.includes(id);
 
@@ -201,12 +202,14 @@ const EditorRender = (() => {
 
       if (node.children.length > 0) {
         const cx = w / 2 + 12;
-        const badge = el('g', { class: 'collapse-badge', transform: `translate(${cx},0)`, style: 'cursor:pointer' });
+        const badge = el('g', { class: 'collapse-badge', transform: `translate(${cx},0)`, style: readOnlyMode ? 'cursor:default;opacity:.55;' : 'cursor:pointer' });
         badge.appendChild(el('circle', { r: 9, fill: '#fff', stroke: node.borderColor || '#C7CBD9', 'stroke-width': 1.4 }));
         const sign = el('text', { x: 0, y: 4, 'text-anchor': 'middle', 'font-size': 12, fill: '#6B7180', 'font-weight': 700 });
         sign.textContent = node.collapsed ? '+' : '–';
         badge.appendChild(sign);
-        badge.addEventListener('click', (e) => { e.stopPropagation(); EditorState.toggleCollapse(id); });
+        if (!readOnlyMode) {
+          badge.addEventListener('click', (e) => { e.stopPropagation(); EditorState.toggleCollapse(id); });
+        }
         g.appendChild(badge);
       }
 
@@ -223,15 +226,18 @@ const EditorRender = (() => {
     });
     g.addEventListener('dblclick', (e) => {
       e.stopPropagation();
+      if (EditorState.readOnly) return;
       window.dispatchEvent(new CustomEvent('mm-inline-edit', { detail: { id } }));
     });
     g.addEventListener('contextmenu', (e) => {
       e.preventDefault(); e.stopPropagation();
+      if (EditorState.readOnly) return;
       if (!EditorState.getSelection().has(id)) EditorState.select(id, false);
       onNodeContextMenu(e.clientX, e.clientY, id);
     });
     g.addEventListener('mousedown', (e) => {
       if (e.button !== 0) return;
+      if (EditorState.readOnly) return; // view-only: no dragging nodes around
       e.stopPropagation();
       const startWorld = screenToWorld(e.clientX, e.clientY);
       const model = EditorState.model;
