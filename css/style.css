@@ -195,6 +195,37 @@ button{ font-family: inherit; }
 .empty-state{ text-align:center; padding: 80px 20px; color: var(--text-muted); }
 .empty-state h3{ color: var(--text); margin-bottom:6px; }
 
+/* Templates gallery */
+.templates-section{ margin-bottom: 8px; }
+.templates-heading h3{ margin:0 0 2px; font-size:1.02rem; font-weight:800; letter-spacing:-.01em; }
+.templates-heading p{ margin:0 0 14px; font-size:.78rem; color: var(--text-muted); }
+.template-grid{
+  display:grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 16px;
+}
+.template-card{
+  position:relative; border-radius: var(--radius-md); overflow:hidden; cursor:pointer;
+  border: 1px solid var(--border); background: var(--surface);
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s;
+}
+.template-card:hover{ transform: translateY(-3px); box-shadow: var(--shadow); border-color: color-mix(in srgb, var(--tpl-accent, var(--accent)) 40%, var(--border)); }
+.template-card-top{
+  height: 92px; position:relative;
+  background: linear-gradient(135deg, var(--tpl-accent, var(--accent)), color-mix(in srgb, var(--tpl-accent, var(--accent)) 55%, #ffffff));
+  display:flex; align-items:center; justify-content:center; font-size:2rem;
+}
+.template-card-badge{
+  position:absolute; top:8px; right:8px; font-size:.6rem; font-weight:800; letter-spacing:.04em;
+  padding: 3px 7px; border-radius: 999px; background: rgba(255,255,255,.92); color:#171A21;
+}
+.template-card-body{ padding: 10px 12px 12px; }
+.template-card-title{ font-weight:700; font-size:.88rem; margin-bottom:3px; }
+.template-card-tagline{ font-size:.72rem; color: var(--text-muted); line-height:1.35; min-height: 2.4em; }
+.template-card-use{
+  margin-top:8px; width:100%; padding:6px 0; border-radius: var(--radius-sm, 8px); border:none;
+  background: var(--tpl-accent, var(--accent)); color:#fff; font-weight:700; font-size:.76rem; cursor:pointer;
+}
+.template-card-use:hover{ filter: brightness(1.06); }
+
 /* Sign-in splash */
 .signin-splash{
   height:100vh; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:22px;
