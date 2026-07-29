@@ -189,37 +189,15 @@ function mmComputeLayout(model, opts) {
   }
   else if (layout === 'tree-balanced') {
     // EdrawMind/XMind-style: root center, main branches auto-split left/right
-    // by leaf-weight so both sides stay visually balanced (not just left half
-    // / right half by count — a branch with many sub-nodes counts for more).
+    // strictly in the order they were created — first half of the branches
+    // (top to bottom, as listed under root) go left, the rest go right.
+    // No re-sorting/re-weighting, so branch order always matches what you see
+    // in the outline.
     positions.set(model.rootId, { x: 0, y: 0 });
     const mainBranches = visibleChildren(root);
-
-    const leafCounts = new Map();
-    function countLeaves(id) {
-      const node = model.nodes.get(id);
-      const kids = visibleChildren(node);
-      if (!node || kids.length === 0) return 1;
-      let total = 0; kids.forEach(cid => total += countLeaves(cid));
-      leafCounts.set(id, total);
-      return total;
-    }
-    mainBranches.forEach(cid => countLeaves(cid));
-
-    // Greedy bin-balance: heaviest branch first, always drop it on whichever
-    // side is currently lighter. Keeps left/right node-count close to even.
-    const origIndex = new Map(mainBranches.map((id, i) => [id, i]));
-    const ordered = [...mainBranches].sort((a, b) => (leafCounts.get(b) || 1) - (leafCounts.get(a) || 1));
-    const left = [], right = [];
-    let leftWeight = 0, rightWeight = 0;
-    ordered.forEach(cid => {
-      const w = leafCounts.get(cid) || 1;
-      if (leftWeight <= rightWeight) { left.push(cid); leftWeight += w; }
-      else { right.push(cid); rightWeight += w; }
-    });
-    // Restore each side's original top-to-bottom branch order (reads nicer
-    // than weight-sorted order).
-    left.sort((a, b) => origIndex.get(a) - origIndex.get(b));
-    right.sort((a, b) => origIndex.get(a) - origIndex.get(b));
+    const mid = Math.ceil(mainBranches.length / 2);
+    const left = mainBranches.slice(0, mid);
+    const right = mainBranches.slice(mid);
 
     function shiftSubtree(id, dy) {
       const p = positions.get(id);
