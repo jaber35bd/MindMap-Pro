@@ -25,6 +25,7 @@ const EditorState = (() => {
   let listeners = { change: [], saveStatus: [] };
   let selectedIds = new Set();
   let clipboardSubtreeJson = null;
+  let readOnly = false; // true for public "view-only" link visitors — blocks all mutation
 
   function on(evt, fn) { listeners[evt].push(fn); }
   function emit(evt, payload) { listeners[evt].forEach(fn => fn(payload)); }
@@ -53,6 +54,7 @@ const EditorState = (() => {
   }
 
   function markDirtyAndSave(opts) {
+    if (readOnly) return; // view-only visitors never write history, cache, or Drive
     dirty = true;
     if (!(opts && opts.skipHistory)) pushHistory();
     // 1) local cache — instant, never fails
@@ -64,7 +66,7 @@ const EditorState = (() => {
   }
 
   async function cloudSave() {
-    if (!fileId || saving) return;
+    if (!fileId || saving || readOnly) return;
     saving = true;
     lastSaveError = null;
     emit('saveStatus', { state: 'saving' });
@@ -219,6 +221,8 @@ const EditorState = (() => {
     get fileName() { return fileName; },
     get dirty() { return dirty; },
     get lastSaveError() { return lastSaveError; },
+    get readOnly() { return readOnly; },
+    set readOnly(v) { readOnly = !!v; },
     markDirtyAndSave, cloudSave, forceSaveNow, renameFile,
     undo, redo, canUndo, canRedo,
     addChild, addSibling, deleteNode, deleteSelected, updateNode, toggleCollapse,
