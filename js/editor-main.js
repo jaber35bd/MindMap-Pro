@@ -56,6 +56,7 @@ async function loadOwnerDiagram(fileId) {
 
 async function loadPublicReadOnly(fileId) {
   document.getElementById('editorShell').classList.add('readonly-mode');
+  EditorState.readOnly = true;
   try {
     const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${APP_CONFIG.GOOGLE_API_KEY}`);
     if (!res.ok) throw new Error('File private ache athoba link vul.');
