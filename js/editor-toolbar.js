@@ -257,22 +257,55 @@ const EditorToolbar = (() => {
 
   /* ---------- Share ---------- */
   function wireShare() {
+    const backdrop = document.getElementById('shareModalBackdrop');
+    const input = document.getElementById('shareLinkInput');
+
+    function buildLink() {
+      const url = new URL(window.location.href);
+      url.search = '';
+      url.searchParams.set('id', EditorState.fileId);
+      url.searchParams.set('view', '1');
+      return url.toString();
+    }
+    function closeModal() { backdrop.style.display = 'none'; }
+
     document.getElementById('shareBtn').addEventListener('click', async () => {
       if (!EditorState.fileId) return;
       const btn = document.getElementById('shareBtn');
       btn.disabled = true;
       try {
         await DriveApi.setPublicReadable(EditorState.fileId, true);
-        const link = `${window.location.origin}${window.location.pathname}?id=${EditorState.fileId}&view=1`;
-        await navigator.clipboard.writeText(link).catch(() => {});
-        toast('View-only link clipboard e copy hoye geche!', 'success');
+        input.value = buildLink();
+        backdrop.style.display = 'flex';
       } catch (e) { toast('Share link toiri korte problem hocche: ' + e.message, 'error'); }
       btn.disabled = false;
     });
+
+    document.getElementById('shareCopyBtn').addEventListener('click', async () => {
+      input.select();
+      try { await navigator.clipboard.writeText(input.value); toast('Link copy hoye geche!', 'success'); }
+      catch (e) { toast('Copy fail holo — link-ta select kore Ctrl+C korun.', 'error'); }
+    });
+
+    document.getElementById('shareStopBtn').addEventListener('click', async () => {
+      if (!EditorState.fileId) return closeModal();
+      const btn = document.getElementById('shareStopBtn');
+      btn.disabled = true;
+      try {
+        await DriveApi.setPublicReadable(EditorState.fileId, false);
+        toast('Sharing bondho kora hoyeche — age-r link ar kaj korbe na.', 'success');
+        closeModal();
+      } catch (e) { toast('Sharing bondho korte problem hocche: ' + e.message, 'error'); }
+      btn.disabled = false;
+    });
+
+    document.getElementById('shareCloseBtn').addEventListener('click', closeModal);
+    backdrop.addEventListener('click', (e) => { if (e.target === backdrop) closeModal(); });
   }
 
   /* ---------- Context menu (right-click on a node) ---------- */
   function showContextMenu(x, y, nodeId) {
+    if (EditorState.readOnly) return;
     closeAnyMenu();
     const model = EditorState.model;
     const isRoot = nodeId === model.rootId;
@@ -308,6 +341,7 @@ const EditorToolbar = (() => {
   /* ---------- Keyboard shortcuts ---------- */
   function wireKeyboard() {
     window.addEventListener('keydown', (e) => {
+      if (EditorState.readOnly) return; // view-only visitors get no shortcuts
       const tag = (document.activeElement && document.activeElement.tagName) || '';
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag)) return; // don't hijack typing
       const id = EditorState.primarySelected();
