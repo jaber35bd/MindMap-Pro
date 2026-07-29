@@ -216,6 +216,25 @@
 
 <div class="toast-stack" id="toastStack"></div>
 
+<div id="shareModalBackdrop" class="modal-backdrop" style="display:none;">
+  <div class="modal">
+    <h3>🔗 View-only link</h3>
+    <p style="color:var(--text-muted); font-size:.82rem; line-height:1.5; margin:0 0 14px;">
+      Ei link jar kache pathaben, se sign in chara-i diagram-ta dekhte parbe ebong node-er link-e click korte parbe — kintu kono edit, add, ba delete korte parbe na.
+    </p>
+    <div class="field">
+      <input class="input" id="shareLinkInput" readonly>
+    </div>
+    <div class="modal-actions" style="justify-content:space-between;">
+      <button class="btn btn-ghost" id="shareStopBtn" style="color:var(--danger);">Stop sharing</button>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-ghost" id="shareCloseBtn">Close</button>
+        <button class="btn btn-primary" id="shareCopyBtn">Copy link</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/mindmap-model.js"></script>
