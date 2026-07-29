@@ -186,6 +186,45 @@ function wireImport() {
   });
 }
 
+function renderTemplates() {
+  const grid = document.getElementById('templateGrid');
+  if (!grid || typeof MM_TEMPLATES === 'undefined') return;
+  grid.innerHTML = '';
+  MM_TEMPLATES.forEach(tpl => {
+    const card = document.createElement('div');
+    card.className = 'template-card';
+    card.style.setProperty('--tpl-accent', tpl.accent);
+    card.innerHTML = `
+      <div class="template-card-top">
+        <span>${tpl.icon}</span>
+        <span class="template-card-badge">✨ PRO</span>
+      </div>
+      <div class="template-card-body">
+        <div class="template-card-title">${escapeHtml(tpl.title)}</div>
+        <div class="template-card-tagline">${escapeHtml(tpl.tagline)}</div>
+        <button class="template-card-use" data-key="${tpl.key}">Use template</button>
+      </div>`;
+    card.querySelector('.template-card-use').addEventListener('click', (e) => {
+      e.stopPropagation();
+      createFromTemplate(tpl.key, tpl.title);
+    });
+    grid.appendChild(card);
+  });
+}
+
+async function createFromTemplate(key, title) {
+  try {
+    const model = mmCreateTemplateMap(key, title);
+    const json = mmSerialize(model, {});
+    const created = await DriveApi.createDiagram(title, json);
+    toast(`${title} template diye notun diagram toiri holo!`, 'success');
+    openDiagram(created.id);
+  } catch (e) {
+    console.error(e);
+    toast('Template diye create korte problem hocche: ' + e.message, 'error');
+  }
+}
+
 function showSignedInUI(user) {
   document.getElementById('signinSplash').style.display = 'none';
   document.getElementById('dashShell').style.display = 'flex';
@@ -194,6 +233,7 @@ function showSignedInUI(user) {
   const avatar = document.getElementById('avatar');
   if (user?.picture) avatar.innerHTML = `<img src="${user.picture}" alt="">`;
   else avatar.textContent = (user?.name || 'U')[0].toUpperCase();
+  renderTemplates();
   refreshList();
 }
 
