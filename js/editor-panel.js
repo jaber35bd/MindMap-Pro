@@ -33,6 +33,7 @@ const EditorPanel = (() => {
     buildIconGrid();
     wireEvents();
     window.addEventListener('mm-inline-edit', (e) => {
+      if (EditorState.readOnly) return;
       EditorState.select(e.detail.id, false);
       setTimeout(() => contentEls.text.focus(), 30);
     });
