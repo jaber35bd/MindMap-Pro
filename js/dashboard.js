@@ -188,28 +188,54 @@ function wireImport() {
 
 function renderTemplates() {
   const grid = document.getElementById('templateGrid');
-  if (!grid || typeof MM_TEMPLATES === 'undefined') return;
-  grid.innerHTML = '';
-  MM_TEMPLATES.forEach(tpl => {
-    const card = document.createElement('div');
-    card.className = 'template-card';
-    card.style.setProperty('--tpl-accent', tpl.accent);
-    card.innerHTML = `
-      <div class="template-card-top">
-        <span>${tpl.icon}</span>
-        <span class="template-card-badge">✨ PRO</span>
-      </div>
-      <div class="template-card-body">
-        <div class="template-card-title">${escapeHtml(tpl.title)}</div>
-        <div class="template-card-tagline">${escapeHtml(tpl.tagline)}</div>
-        <button class="template-card-use" data-key="${tpl.key}">Use template</button>
-      </div>`;
-    card.querySelector('.template-card-use').addEventListener('click', (e) => {
-      e.stopPropagation();
-      createFromTemplate(tpl.key, tpl.title);
+  const tabsWrap = document.getElementById('templateTabs');
+  if (!grid || !tabsWrap || typeof MM_TEMPLATES === 'undefined') return;
+
+  const categories = ['All', ...Array.from(new Set(MM_TEMPLATES.map(t => t.category)))];
+  let activeCat = 'All';
+
+  function renderTabs() {
+    tabsWrap.innerHTML = categories.map(c =>
+      `<button class="tpl-tab ${c === activeCat ? 'active' : ''}" data-cat="${escapeHtml(c)}">${escapeHtml(c)}</button>`
+    ).join('');
+    tabsWrap.querySelectorAll('.tpl-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        activeCat = btn.dataset.cat;
+        renderTabs();
+        renderCards();
+      });
     });
-    grid.appendChild(card);
-  });
+  }
+
+  function renderCards() {
+    grid.innerHTML = '';
+    const list = activeCat === 'All' ? MM_TEMPLATES : MM_TEMPLATES.filter(t => t.category === activeCat);
+    list.forEach(tpl => {
+      const card = document.createElement('div');
+      card.className = 'template-card';
+      card.style.setProperty('--tpl-accent', tpl.accent);
+      let thumb = '';
+      try { thumb = mmTemplateThumbnailSvg(tpl.key, 230, 96); } catch (e) { console.warn('thumbnail fail', tpl.key, e); }
+      card.innerHTML = `
+        <div class="template-card-top">
+          <span class="template-card-badge">✨ PRO</span>
+          <div class="template-card-thumb">${thumb}</div>
+        </div>
+        <div class="template-card-body">
+          <div class="template-card-title">${tpl.icon} ${escapeHtml(tpl.title)}</div>
+          <div class="template-card-tagline">${escapeHtml(tpl.tagline)}</div>
+          <button class="template-card-use" data-key="${tpl.key}">Use template</button>
+        </div>`;
+      card.querySelector('.template-card-use').addEventListener('click', (e) => {
+        e.stopPropagation();
+        createFromTemplate(tpl.key, tpl.title);
+      });
+      grid.appendChild(card);
+    });
+  }
+
+  renderTabs();
+  renderCards();
 }
 
 async function createFromTemplate(key, title) {
