@@ -35,7 +35,7 @@ async function loadOwnerDiagram(fileId) {
   if (cached) {
     EditorState.loadFromJson(cached, fileId, null);
     renderAll();
-    EditorRender.resetView();
+    EditorRender.fitToContent();
   }
   // 2) then reconcile with Drive (source of truth) if newer
   try {
@@ -43,7 +43,7 @@ async function loadOwnerDiagram(fileId) {
     EditorState.loadFromJson(remote, fileId, null);
     LocalCache.save(fileId, remote);
     renderAll();
-    if (!cached) EditorRender.resetView();
+    if (!cached) EditorRender.fitToContent();
   } catch (e) {
     console.error(e);
     if (!cached) {
@@ -63,7 +63,7 @@ async function loadPublicReadOnly(fileId) {
     const text = await res.text();
     EditorState.loadFromJson(text, null, null);
     renderAll();
-    EditorRender.resetView();
+    EditorRender.fitToContent();
     document.getElementById('toolbarRoot').innerHTML = `<div style="padding:10px 14px; font-weight:700;">👁️ View-only mode — <a href="index.html" style="color:var(--accent);">sign in to edit your own diagrams</a></div>`;
     document.getElementById('editorPanel').classList.add('hidden');
   } catch (e) {

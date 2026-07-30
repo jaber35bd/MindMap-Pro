@@ -45,7 +45,7 @@ const EditorToolbar = (() => {
     function update() { pctLabel.textContent = Math.round(EditorRender.getZoom() * 100) + '%'; }
     document.getElementById('zoomInBtn').addEventListener('click', () => { EditorRender.setZoom(EditorRender.getZoom() * 1.2); update(); });
     document.getElementById('zoomOutBtn').addEventListener('click', () => { EditorRender.setZoom(EditorRender.getZoom() / 1.2); update(); });
-    document.getElementById('zoomResetBtn').addEventListener('click', () => { EditorRender.resetView(); update(); });
+    document.getElementById('zoomResetBtn').addEventListener('click', () => { EditorRender.fitToContent(); update(); });
     update();
   }
 

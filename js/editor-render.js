@@ -6,6 +6,7 @@
 const EditorRender = (() => {
   const NS = 'http://www.w3.org/2000/svg';
   const NODE_W = 168, NODE_H = 58;
+  const MIN_ZOOM = 0.15, MAX_ZOOM = 2.5;
   let svg, viewport, wrap;
   let zoom = 1, panX = 0, panY = 0;
   let isPanning = false, panStart = null;
@@ -21,6 +22,7 @@ const EditorRender = (() => {
     viewport.setAttribute('id', 'viewport');
     svg.appendChild(viewport);
     wireCanvasEvents();
+    wireTouchEvents();
   }
 
   function el(tag, attrs) {
@@ -34,7 +36,7 @@ const EditorRender = (() => {
   }
 
   function setZoom(z, cx, cy) {
-    const newZoom = Math.min(2.5, Math.max(0.2, z));
+    const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
     if (cx !== undefined) {
       // zoom around a point (screen coords)
       const rect = svg.getBoundingClientRect();
@@ -49,6 +51,28 @@ const EditorRender = (() => {
   }
   function getZoom() { return zoom; }
   function resetView() { zoom = 1; panX = wrap.clientWidth / 2; panY = wrap.clientHeight / 2; applyTransform(); }
+
+  // Actually fits the whole diagram inside the visible canvas — critical on
+  // small/mobile screens where a wide mind map otherwise spills off-screen
+  // with no way to see it all at once.
+  function fitToContent(padding) {
+    if (!positionsCache.size || !wrap) { resetView(); return zoom; }
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    positionsCache.forEach(p => {
+      minX = Math.min(minX, p.x - NODE_W / 2); minY = Math.min(minY, p.y - NODE_H / 2);
+      maxX = Math.max(maxX, p.x + NODE_W / 2); maxY = Math.max(maxY, p.y + NODE_H / 2);
+    });
+    const bboxW = Math.max(1, maxX - minX), bboxH = Math.max(1, maxY - minY);
+    const pad = padding != null ? padding : 50;
+    const availW = Math.max(50, wrap.clientWidth - pad * 2);
+    const availH = Math.max(50, wrap.clientHeight - pad * 2);
+    zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.min(availW / bboxW, availH / bboxH)));
+    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+    panX = wrap.clientWidth / 2 - cx * zoom;
+    panY = wrap.clientHeight / 2 - cy * zoom;
+    applyTransform();
+    return zoom;
+  }
   function panBy(dx, dy) { panX += dx; panY += dy; applyTransform(); }
 
   function screenToWorld(clientX, clientY) {
@@ -267,6 +291,53 @@ const EditorRender = (() => {
       window.addEventListener('mousemove', onMove);
       window.addEventListener('mouseup', onUp);
     });
+
+    // Touch equivalent of the mousedown drag above — single-finger drag
+    // moves the node (or the current multi-selection); a short tap with no
+    // real movement just selects it (the browser's synthesized 'click'
+    // event handles that case too, so we only act here on real drags).
+    g.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1) return;
+      e.stopPropagation();
+      const touch = e.touches[0];
+      const startWorld = screenToWorld(touch.clientX, touch.clientY);
+      const startClientX = touch.clientX, startClientY = touch.clientY;
+      const model = EditorState.model;
+      const startPositions = new Map();
+      let moved = false, dragging = false;
+
+      function onTouchMove(ev) {
+        const t = ev.touches[0];
+        if (!t) return;
+        if (!moved && Math.hypot(t.clientX - startClientX, t.clientY - startClientY) > 8) {
+          moved = true;
+          if (!EditorState.readOnly) {
+            dragging = true;
+            const selection = EditorState.getSelection().has(id) ? EditorState.getSelection() : new Set([id]);
+            selection.forEach(sid => { const p = positionsCache.get(sid); if (p) startPositions.set(sid, { x: p.x, y: p.y }); });
+          }
+        }
+        if (dragging) {
+          ev.preventDefault();
+          const w = screenToWorld(t.clientX, t.clientY);
+          const dx = w.x - startWorld.x, dy = w.y - startWorld.y;
+          startPositions.forEach((base, sid) => {
+            const node = model.nodes.get(sid);
+            if (node) { node.customX = base.x + dx; node.customY = base.y + dy; }
+          });
+          EditorRender.render(model, EditorState.getSelection());
+        }
+      }
+      function onTouchEnd() {
+        window.removeEventListener('touchmove', onTouchMove);
+        window.removeEventListener('touchend', onTouchEnd);
+        window.removeEventListener('touchcancel', onTouchEnd);
+        if (dragging) EditorState.markDirtyAndSave();
+      }
+      window.addEventListener('touchmove', onTouchMove, { passive: false });
+      window.addEventListener('touchend', onTouchEnd);
+      window.addEventListener('touchcancel', onTouchEnd);
+    }, { passive: true });
   }
 
   function wireCanvasEvents() {
@@ -320,6 +391,62 @@ const EditorRender = (() => {
     }, { passive: false });
   }
 
+  // Single-finger drag pans the canvas; two-finger pinch zooms around the
+  // pinch midpoint. Mobile browsers otherwise try to scroll/zoom the page
+  // itself here, which is why dragging felt broken before — touch-action:
+  // none on the SVG (see CSS) plus these handlers hand full control to us.
+  function wireTouchEvents() {
+    let mode = null; // 'pan' | 'pinch'
+    let panStartTouch = null;
+    let pinchStart = null;
+
+    function dist(t1, t2) { return Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY); }
+    function midpoint(t1, t2) { return { x: (t1.clientX + t2.clientX) / 2, y: (t1.clientY + t2.clientY) / 2 }; }
+
+    svg.addEventListener('touchstart', (e) => {
+      if (e.target !== svg && e.target !== viewport) return; // node touches are handled per-node
+      if (e.touches.length === 1) {
+        mode = 'pan';
+        panStartTouch = { x: e.touches[0].clientX, y: e.touches[0].clientY, panX, panY };
+      } else if (e.touches.length === 2) {
+        mode = 'pinch';
+        pinchStart = { d: dist(e.touches[0], e.touches[1]), zoom, mid: midpoint(e.touches[0], e.touches[1]), panX, panY };
+      }
+    }, { passive: true });
+
+    svg.addEventListener('touchmove', (e) => {
+      if (mode === 'pan' && e.touches.length === 1 && panStartTouch) {
+        e.preventDefault();
+        panX = panStartTouch.panX + (e.touches[0].clientX - panStartTouch.x);
+        panY = panStartTouch.panY + (e.touches[0].clientY - panStartTouch.y);
+        applyTransform();
+      } else if (mode === 'pinch' && e.touches.length === 2 && pinchStart) {
+        e.preventDefault();
+        const factor = dist(e.touches[0], e.touches[1]) / pinchStart.d;
+        const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, pinchStart.zoom * factor));
+        const rect = svg.getBoundingClientRect();
+        const sx = pinchStart.mid.x - rect.left, sy = pinchStart.mid.y - rect.top;
+        const wx = (sx - pinchStart.panX) / pinchStart.zoom, wy = (sy - pinchStart.panY) / pinchStart.zoom;
+        panX = sx - wx * newZoom;
+        panY = sy - wy * newZoom;
+        zoom = newZoom;
+        applyTransform();
+      }
+    }, { passive: false });
+
+    function onTouchEnd(e) {
+      if (e.touches.length === 1) {
+        // lifted one finger out of a pinch — keep panning with the other
+        mode = 'pan';
+        panStartTouch = { x: e.touches[0].clientX, y: e.touches[0].clientY, panX, panY };
+      } else if (e.touches.length === 0) {
+        mode = null; panStartTouch = null; pinchStart = null;
+      }
+    }
+    svg.addEventListener('touchend', onTouchEnd);
+    svg.addEventListener('touchcancel', onTouchEnd);
+  }
+
   function focusOnNode(id) {
     const pos = positionsCache.get(id);
     if (!pos) return;
@@ -334,5 +461,5 @@ const EditorRender = (() => {
     return new XMLSerializer().serializeToString(clone);
   }
 
-  return { init, render, setZoom, getZoom, resetView, panBy, focusOnNode, exportSvgString, get positions() { return positionsCache; } };
+  return { init, render, setZoom, getZoom, resetView, fitToContent, panBy, focusOnNode, exportSvgString, get positions() { return positionsCache; } };
 })();
